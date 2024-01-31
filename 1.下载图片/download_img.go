@@ -20,7 +20,14 @@ func main() {
 		return fmt.Errorf("读取响应数据失败:", err)
 		
 	}
-
+	// 如果文件已存在，先删除
+	if _, err := os.Stat(filePath); err == nil {
+		err = os.Remove(filePath)
+		if err != nil {
+			return fmt.Errorf("删除文件失败:", err)
+			
+		}
+	}
 	err = ioutil.WriteFile("/home/653aa6243a36b92bf4ce2fd2eab3e348.png", data, 0644)
 	if err != nil {
 		return  fmt.Errorf("保存文件失败:", err)
