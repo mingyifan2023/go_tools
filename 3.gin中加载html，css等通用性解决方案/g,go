@@ -1,0 +1,118 @@
+package main
+
+import (
+	"net/http"
+	"strings"
+	"time"
+
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
+)
+
+// 还是有一些繁琐，通用化处理
+// .webp   .svg .json  通用性的将static的各种类型的文件进行路由处理之后，然后直接就可以进行加载
+//
+//	func serveStaticFile(router *gin.Engine) {
+//		router.GET("/:filename", func(c *gin.Context) {
+//			filename := c.Param("filename")
+//			if strings.HasSuffix(filename, ".svg") {
+//				c.File("./static/" + filename)
+//			} else if strings.HasSuffix(filename, ".json") {
+//				c.File("./static/" + filename)
+//			} else if strings.HasSuffix(filename, ".webp") {
+//				c.File("./static/" + filename)
+//			} else {
+//				c.String(404, "File not found")
+//			}
+//		})
+//	}
+var supportedFileTypes = []string{"svg", "json", "webp", "png", "jpg", "ico", "js", "xml"}
+var supportedFolders = []string{"css", "js", "img", "fonts", "fav_icons", "icons", "xml"}
+
+func serveStaticFile(router *gin.Engine) {
+	router.GET("/static/:filename", func(c *gin.Context) {
+		filename := c.Param("filename")
+		for _, fileType := range supportedFileTypes {
+			if strings.HasSuffix(filename, "."+fileType) {
+				c.File("./static/" + filename)
+				return
+			}
+		}
+		c.String(404, "File not found")
+	})
+}
+
+func serveStaticFolder(router *gin.Engine, folderNames []string) {
+	for _, folderName := range folderNames {
+		router.Static("/"+folderName, "./static/"+folderName)
+	}
+}
+
+func main() {
+	router := gin.Default()
+	router.LoadHTMLGlob("templates/*") //html文件的添加方法
+
+	//文件夹的进行通用性的处理
+	// router.Static("/css", "./static/css")     // css,js,图片等静态文件的添加方法
+	// router.Static("/js", "./static/js")       // vue编译的文件，直接把html文件放入templates
+	// router.Static("/img", "./static/img")     // 其他的静态文件都放入到static中
+	// router.Static("/fonts", "./static/fonts") // 至于具体的编译后的html文件中的引入路径
+
+	// router.StaticFile("/manifest.json", "./static/manifest.json") //单独增加一类文件 测试OK
+	// 设置动态路由处理器
+	// serveStaticFile(router) //这样可以通用化加载templates中文件，不修改vue编译后的文件路径  // 就在这里根据需要进行修改即可
+
+	// 设置动态路由处理器，传入文件夹数组
+	serveStaticFolder(router, supportedFolders)
+	// ここからCorsの設定
+	// *****CORS設定をいじくって検証********
+	router.Use(cors.New(cors.Config{
+		// アクセス許可するオリジン
+		AllowOrigins: []string{
+			"http://localhost",
+		},
+		// アクセス許可するHTTPメソッド
+		AllowMethods: []string{
+			"POST",
+			"GET",
+			"OPTIONS",
+		},
+		// 許可するHTTPリクエストヘッダ
+		AllowHeaders: []string{
+			"Content-Type",
+		},
+		// cookieなどの情報を必要とするかどうか
+		AllowCredentials: false,
+		// preflightリクエストの結果をキャッシュする時間
+		MaxAge: 24 * time.Hour,
+	}))
+
+	router.GET("/jp", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "jp.html", gin.H{
+			"ok": "ok",
+		})
+	})
+	router.GET("/", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "jp.html", gin.H{
+			"jp": "ok",
+		})
+	})
+
+	router.GET("/en", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "en.html", gin.H{
+			"en": "ok",
+		})
+	})
+	router.GET("/g", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "mojoru.html", gin.H{
+			"": "ok",
+		})
+	})
+	router.GET("/todo", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "todo.html", gin.H{
+			"": "ok",
+		})
+	})
+
+	router.Run(":8319")
+}
