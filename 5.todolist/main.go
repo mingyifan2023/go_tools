@@ -1,7 +1,6 @@
 package main
 
 import (
-    "database/sql"
     "encoding/json"
     "fmt"
     "html/template"
@@ -10,16 +9,17 @@ import (
     "os"
     "path/filepath"
 
-    _ "github.com/mattn/go-sqlite3"
+    "gorm.io/driver/sqlite"
+    "gorm.io/gorm"
 )
 
-// Content 结构体用于解析请求中的 JSON 数据
-type Content struct {
+type Todo struct {
+    ID      uint   `json:"id" gorm:"primaryKey"`
     Content string `json:"content"`
 }
 
 // 初始化数据库
-func initDB() (*sql.DB, error) {
+func initDB() (*gorm.DB, error) {
     dbDir := "./DB"
     // 创建 DB 文件夹（如果不存在）
     if _, err := os.Stat(dbDir); os.IsNotExist(err) {
@@ -27,18 +27,13 @@ func initDB() (*sql.DB, error) {
     }
 
     dbPath := filepath.Join(dbDir, "todo.db")
-    db, err := sql.Open("sqlite3", dbPath)
+    db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
     if err != nil {
         return nil, err
     }
 
-    // 创建表格
-    createTableSQL := `CREATE TABLE IF NOT EXISTS todos (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        content TEXT NOT NULL
-    );`
-    
-    _, err = db.Exec(createTableSQL)
+    // 自动迁移模式
+    err = db.AutoMigrate(&Todo{})
     if err != nil {
         return nil, err
     }
@@ -53,8 +48,8 @@ func saveTodoHandler(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    var content Content
-    err := json.NewDecoder(r.Body).Decode(&content)
+    var todo Todo
+    err := json.NewDecoder(r.Body).Decode(&todo)
     if err != nil {
         http.Error(w, "无法解析请求体", http.StatusBadRequest)
         return
@@ -66,27 +61,23 @@ func saveTodoHandler(w http.ResponseWriter, r *http.Request) {
         log.Fatal(err)
         return
     }
-    defer db.Close()
+    defer func() {
+        db.Exec("PRAGMA foreign_keys = ON") // 确保启用外键支持
+    }()
 
     // 插入数据
-    stmt, err := db.Prepare("INSERT INTO todos(content) VALUES(?)")
-    if err != nil {
+    result := db.Create(&todo)
+    if result.Error != nil {
         http.Error(w, "插入数据失败", http.StatusInternalServerError)
-        log.Fatal(err)
-        return
-    }
-    _, err = stmt.Exec(content.Content)
-    if err != nil {
-        http.Error(w, "插入数据失败", http.StatusInternalServerError)
-        log.Fatal(err)
+        log.Fatal(result.Error)
         return
     }
 
     // 返回成功响应
     response := map[string]interface{}{
-        "data": content,
+        "data": todo,
     }
-    
+
     w.Header().Set("Content-Type", "application/json")
     json.NewEncoder(w).Encode(response)
 }
@@ -98,7 +89,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
         http.Error(w, "无法加载模板", http.StatusInternalServerError)
         return
     }
-    
+
     tmpl.Execute(w, nil)
 }
 
@@ -109,4 +100,3 @@ func main() {
 
     fmt.Println("服务器正在运行，访问地址: http://localhost:8004")
     log.Fatal(http.ListenAndServe(":8004", nil))
-}
