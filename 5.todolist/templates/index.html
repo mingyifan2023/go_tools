@@ -87,37 +87,46 @@
                 .catch(err => console.error('获取待办事项失败:', err));
         }
 
-        // 保存所有待办事项
-        document.getElementById('save-button').addEventListener('click', () => {
-            const content = document.getElementById('content').value.split('\n'); // 按照换行符分割
-            
-            // 过滤掉空白的待办事项
-            const todos = content.filter(item => item.trim() !== '').map(item => ({ content: item })); 
+       // 保存所有待办事项
+document.getElementById('save-button').addEventListener('click', () => {
+    const content = document.getElementById('content').value.split('\n'); // 按照换行符分割
+    
+    // 过滤掉空白的待办事项
+    const todos = content.filter(item => item.trim() !== '').map(item => ({ content: item })); 
 
-            if (todos.length === 0) {
-                alert('请填写至少一个待办事项。');
-                return;
-            }
+    if (todos.length === 0) {
+        alert('请填写至少一个待办事项。');
+        return;
+    }
 
-            // 清空数据库中的所有待办事项，并插入新的待办事项
-            fetch('/save', {
-                method: 'DELETE' // 假设后端支持删除所有待办事项
-            })
-            .then(() => {
-                return fetch('/save', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(todos)
-                });
-            })
-            .then(response => response.json())
-            .then(() => {
-                fetchTodos(); // 更新待办事项列表
-            })
-            .catch(err => console.error('保存待办事项失败:', err));
+    // 清空数据库中的所有待办事项，并插入新的待办事项
+    fetch('/save', {
+        method: 'DELETE' // 假设后端支持删除所有待办事项
+    })
+    .then(() => {
+        return fetch('/save', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(todos)
         });
+    })
+    .then(response => response.json())
+    .then(() => {
+        fetchTodos(); // 更新待办事项列表
+        // 显示保存成功的信息
+        const messageDiv = document.getElementById('message');
+        messageDiv.textContent = '保存成功'; // 显示成功提示
+        messageDiv.style.color = '#4CAF50'; // 设置成功提示颜色
+    })
+    .catch(err => {
+        console.error('保存待办事项失败:', err);
+        const messageDiv = document.getElementById('message');
+        messageDiv.textContent = '保存失败，请重试'; // 显示错误提示
+        messageDiv.style.color = 'red'; // 设置错误提示颜色
+    });
+});
 
         // 页面加载时获取待办事项
         window.onload = fetchTodos;
