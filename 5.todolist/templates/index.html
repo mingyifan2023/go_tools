@@ -26,7 +26,7 @@
         .logo {
             display: block;
             margin: 0 auto 20px; /* 居中并增加底部间距 */
-            width: 80px; /* 控制Logo的宽度，放大 */
+            width: 120px; /* 控制Logo的宽度，放大 */
         }
         h1 {
             text-align: center; /* 让标题文字居中 */
@@ -34,7 +34,7 @@
         }
         textarea {
             width: 100%;
-            height: 400px; /* 高度增加 */
+            height: 650px; /* 高度增加 */
             margin-bottom: 10px;
             padding: 10px; /* 增加内边距 */
             box-sizing: border-box; /* 使得padding和border包含在宽度内 */
@@ -69,10 +69,13 @@
 </head>
 <body>
     <div class="container">
+        <img src="https://static.vecteezy.com/system/resources/previews/022/666/101/non_2x/planet-earth-cartoon-colored-clipart-illustration-free-vector.jpg" alt="Logo" class="logo">
+
         <h1>Todolist</h1>
         <textarea id="content" placeholder="输入待办事项内容..."></textarea>
         <button id="save-button">保存待办事项</button>
-    
+        <div id="message" class="message"></div> <!-- 提示信息区域 -->
+
     </div>
 
     <script>
