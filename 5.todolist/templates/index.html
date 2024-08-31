@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Todo List</title>
+    <title>Todolist</title>
     <style>
-        body {
+                body {
             font-family: Arial, sans-serif;
             display: flex; /* 使用flexbox进行布局 */
             justify-content: center; /* 水平居中 */
@@ -26,7 +26,7 @@
         .logo {
             display: block;
             margin: 0 auto 20px; /* 居中并增加底部间距 */
-            width: 80px; /* 控制Logo的宽度 */
+            width: 80px; /* 控制Logo的宽度，放大 */
         }
         h1 {
             text-align: center; /* 让标题文字居中 */
@@ -69,42 +69,14 @@
 </head>
 <body>
     <div class="container">
-        <img src="s-2012665.png?f=webp" alt="Logo" class="logo">
         <h1>Todolist</h1>
-        <textarea id="content" placeholder="输入内容..."></textarea>
-        <div class="button-container">
-            <button onclick="saveData()">保存</button>
-        </div>
-        <div id="message" class="message"></div> <!-- 提示信息区域 -->
+        <textarea id="content" placeholder="输入待办事项内容..."></textarea>
+        <button id="save-button">保存待办事项</button>
+    
     </div>
 
     <script>
-        async function saveData() {
-            const content = document.getElementById('content').value;
-            const messageDiv = document.getElementById('message'); // 获取提示信息区域
-
-            try {
-                const response = await fetch('/save', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ content: content })
-                });
-
-                if (response.ok) {
-                    messageDiv.textContent = '保存成功'; // 显示成功提示
-                    document.getElementById('content').value = ''; // 清空文本区
-                    fetchTodos(); // 更新待办事项列表
-                } else {
-                    messageDiv.textContent = '保存失败'; // 显示失败提示
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                messageDiv.textContent = '发生错误，请重试'; // 显示错误提示
-            }
-        }
-           // 获取待办事项并显示在文本框中
+        // 获取待办事项并显示在文本框中
         function fetchTodos() {
             fetch('/todos')
                 .then(response => response.json())
@@ -114,6 +86,38 @@
                 })
                 .catch(err => console.error('获取待办事项失败:', err));
         }
+
+        // 保存所有待办事项
+        document.getElementById('save-button').addEventListener('click', () => {
+            const content = document.getElementById('content').value.split('\n'); // 按照换行符分割
+            
+            // 过滤掉空白的待办事项
+            const todos = content.filter(item => item.trim() !== '').map(item => ({ content: item })); 
+
+            if (todos.length === 0) {
+                alert('请填写至少一个待办事项。');
+                return;
+            }
+
+            // 清空数据库中的所有待办事项，并插入新的待办事项
+            fetch('/save', {
+                method: 'DELETE' // 假设后端支持删除所有待办事项
+            })
+            .then(() => {
+                return fetch('/save', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(todos)
+                });
+            })
+            .then(response => response.json())
+            .then(() => {
+                fetchTodos(); // 更新待办事项列表
+            })
+            .catch(err => console.error('保存待办事项失败:', err));
+        });
 
         // 页面加载时获取待办事项
         window.onload = fetchTodos;
