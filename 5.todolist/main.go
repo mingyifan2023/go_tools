@@ -9,56 +9,37 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/sqlite"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 )
 
 type Todo struct {
-	ID      uint   `json:"id" gorm:"primary_key"`
+	ID      uint   `json:"id" gorm:"primaryKey"`
 	Content string `json:"content"`
 }
 
-type Database struct {
-	Self *gorm.DB
-}
-
 // 初始化数据库
-func (db *Database) Init() error {
+func initDB() (*gorm.DB, error) {
 	dbDir := "DB"
+	// 创建 DB 文件夹（如果不存在）
 	if _, err := os.Stat(dbDir); os.IsNotExist(err) {
-		err := os.Mkdir(dbDir, 0755)
-		if err != nil {
-			return fmt.Errorf("创建目录失败: %v", err)
-		}
+		os.Mkdir(dbDir, os.ModePerm)
 	}
 
-	// 使用相对路径指定 SQLite 数据库文件位置
-	dbFilePath := filepath.Join(dbDir, "todo.sqlite")
-
-	// 初始化数据库
-	_db, err := gorm.Open("sqlite3", dbFilePath)
+	dbPath := filepath.Join(dbDir, "todo.db")
+	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
 	if err != nil {
-		log.Printf("数据库连接失败. 数据库文件: %s", dbFilePath)
-		return err
+		return nil, err
 	}
-
-	db.Self = _db
 
 	// 自动迁移模式
-	if err := db.Self.AutoMigrate(&Todo{}).Error; err != nil {
-		return fmt.Errorf("数据库迁移失败: %v", err)
+	err = db.AutoMigrate(&Todo{})
+	if err != nil {
+		return nil, err
 	}
 
-	return nil
+	return db, nil
 }
-
-func (db *Database) Close() {
-	if err := db.Self.Close(); err != nil {
-		log.Printf("关闭数据库时出错: %v", err)
-	}
-}
-
-var DB Database
 
 // 保存待办事项到数据库
 func saveTodoHandler(w http.ResponseWriter, r *http.Request) {
@@ -74,11 +55,21 @@ func saveTodoHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	db, err := initDB()
+	if err != nil {
+		http.Error(w, "数据库错误", http.StatusInternalServerError)
+		log.Fatal(err)
+		return
+	}
+	defer func() {
+		db.Exec("PRAGMA foreign_keys = ON") // 确保启用外键支持
+	}()
+
 	// 插入数据
-	result := DB.Self.Create(&todo)
+	result := db.Create(&todo)
 	if result.Error != nil {
-		http.Error(w, fmt.Sprintf("插入数据失败: %v", result.Error), http.StatusInternalServerError)
-		log.Printf("插入数据失败: %v\n", result.Error)
+		http.Error(w, "插入数据失败", http.StatusInternalServerError)
+		log.Fatal(result.Error)
 		return
 	}
 
@@ -93,6 +84,16 @@ func saveTodoHandler(w http.ResponseWriter, r *http.Request) {
 
 // 显示 HTML 模板
 func indexHandler(w http.ResponseWriter, r *http.Request) {
+
+	db, err := initDB()
+	if err != nil {
+		http.Error(w, "数据库错误", http.StatusInternalServerError)
+		log.Fatal(err)
+		return
+	}
+	defer func() {
+		db.Exec("PRAGMA foreign_keys = ON") // 确保启用外键支持
+	}()
 	tmpl, err := template.ParseFiles("./templates/index.html")
 	if err != nil {
 		http.Error(w, "无法加载模板", http.StatusInternalServerError)
@@ -103,13 +104,6 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	// 初始化数据库
-	err := DB.Init()
-	if err != nil {
-		log.Fatalf("初始化数据库失败: %v", err)
-	}
-	defer DB.Close() // 在程序退出时关闭数据库
-
 	// 初始化路由
 	http.HandleFunc("/", indexHandler)
 	http.HandleFunc("/save", saveTodoHandler)
