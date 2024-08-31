@@ -24,7 +24,7 @@
         }
         textarea {
             width: 100%;
-            height: 100px;
+            height: 300px;
             margin-bottom: 10px;
             border-radius: 5px;
             border: 1px solid #ccc;
@@ -44,25 +44,6 @@
         button:hover {
             background-color: #218838;
         }
-        .todo-list {
-            margin-top: 20px;
-        }
-        .todo-item {
-            margin: 10px 0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .todo-item textarea {
-            flex: 1;
-            margin-right: 10px;
-        }
-        .todo-item button {
-            background-color: #007bff;
-        }
-        .todo-item button:hover {
-            background-color: #0056b3;
-        }
     </style>
 </head>
 <body>
@@ -70,79 +51,43 @@
         <h1>Todolist</h1>
         <textarea id="content" placeholder="输入待办事项内容..."></textarea>
         <button id="save-button">保存待办事项</button>
-
-        <div class="todo-list" id="todo-list"></div>
     </div>
 
     <script>
-        // 获取待办事项并显示在页面上
+        // 获取待办事项并显示在文本框中
         function fetchTodos() {
             fetch('/todos')
                 .then(response => response.json())
                 .then(data => {
-                    const todoList = document.getElementById('todo-list');
-                    todoList.innerHTML = '';
-
-                    data.forEach(todo => {
-                        const div = document.createElement('div');
-                        div.className = 'todo-item';
-                        div.innerHTML = `
-                            <textarea data-id="${todo.id}">${todo.content}</textarea>
-                            <button onclick="updateTodo(${todo.id})">更新</button>
-                        `;
-                        todoList.appendChild(div);
-                    });
+                    const contentArea = document.getElementById('content');
+                    contentArea.value = data.map(todo => todo.content).join('\n'); // 将每个待办事项以换行符连接
                 })
                 .catch(err => console.error('获取待办事项失败:', err));
         }
 
-        // 保存新的待办事项
+        // 保存所有待办事项
         document.getElementById('save-button').addEventListener('click', () => {
-            const content = document.getElementById('content').value;
-            if (!content) {
-                alert('请填写待办事项内容。');
+            const content = document.getElementById('content').value.split('\n'); // 按照换行符分割
+            if (content.length === 0 || content[0] === '') {
+                alert('请填写至少一个待办事项。');
                 return;
             }
 
-            const todo = { content };
+            const todos = content.map(item => ({ content: item })); // 生成待办事项数组
+
             fetch('/save', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify(todo)
+                body: JSON.stringify(todos)
             })
             .then(response => response.json())
             .then(() => {
-                document.getElementById('content').value = '';
                 fetchTodos(); // 更新待办事项列表
             })
             .catch(err => console.error('保存待办事项失败:', err));
         });
-
-        // 更新已存在的待办事项
-        function updateTodo(id) {
-            const textarea = document.querySelector(`textarea[data-id="${id}"]`);
-            const content = textarea.value;
-            if (!content) {
-                alert('请填写待办事项内容。');
-                return;
-            }
-
-            const todo = { id, content };
-            fetch('/save', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(todo)
-            })
-            .then(response => response.json())
-            .then(() => {
-                fetchTodos(); // 更新待办事项列表
-            })
-            .catch(err => console.error('更新待办事项失败:', err));
-        }
 
         // 页面加载时获取待办事项
         window.onload = fetchTodos;
