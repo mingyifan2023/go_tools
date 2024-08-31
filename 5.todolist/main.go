@@ -78,7 +78,7 @@ func saveTodoHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// 清除原有待办事项
-		db.Delete(&Todo{})
+		db.Exec("DELETE FROM todos")
 
 		// 插入新的待办事项
 		for _, todo := range todos {
@@ -107,7 +107,7 @@ func saveTodoHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// 删除所有待办事项
-		result := db.Delete(&Todo{})
+		result := db.Unscoped().Delete(&Todo{})
 		if result.Error != nil {
 			http.Error(w, "删除数据失败", http.StatusInternalServerError)
 			log.Fatal(result.Error)
