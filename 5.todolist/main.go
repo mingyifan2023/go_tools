@@ -120,7 +120,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 func main() {
 	http.HandleFunc("/", indexHandler)
 	http.HandleFunc("/save", saveTodosHandler) // 保存待办事项的路由
-	http.HandleFunc("/todos", getTodosHandler)  // 获取待办事项的路由
+	http.HandleFunc("/todos", getTodosHandler) // 获取待办事项的路由
 
 	fmt.Println("服务器正在运行，访问地址: http://localhost:8004")
 	log.Fatal(http.ListenAndServe(":8004", nil))
