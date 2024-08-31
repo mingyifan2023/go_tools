@@ -3,107 +3,149 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>mojoru todolist</title>
+    <title>Todolist</title>
     <style>
         body {
             font-family: Arial, sans-serif;
-            display: flex; /* 使用flexbox进行布局 */
-            justify-content: center; /* 水平居中 */
-            align-items: center; /* 垂直居中 */
-            height: 100vh; /* 高度为视口高度 */
-            margin: 0; /* 移除默认边距 */
-            background-color: #f9f9f9;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
         }
         .container {
-            border: 1px solid #cccccc;
-            border-radius: 10px; /* 调整边角圆度 */
+            max-width: 600px;
+            margin: auto;
+            background: white;
             padding: 20px;
-            max-width: 900px;
-            width: 90%; /* 让容器宽度适应屏幕 */
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); /* 添加阴影效果 */
-            box-sizing: border-box; /* 包括padding和border在内的宽度计算 */
-        }
-        .logo {
-            display: block;
-            margin: 0 auto 20px; /* 居中并增加底部间距 */
-            width: 80px; /* 控制Logo的宽度，放大 */
+            border-radius: 5px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         }
         h1 {
-            text-align: center; /* 让标题文字居中 */
-            color: #333; /* 调整文字颜色 */
+            text-align: center;
         }
         textarea {
             width: 100%;
-            height: 400px; /* 高度增加 */
+            height: 100px;
             margin-bottom: 10px;
-            padding: 10px; /* 增加内边距 */
-            box-sizing: border-box; /* 使得padding和border包含在宽度内 */
-            border: 1px solid #cccccc; /* 边框样式 */
-            border-radius: 5px; /* 边角圆度 */
-            font-size: 16px; /* 字体大小 */
-            resize: none; /* 禁用拉伸 */
-            background-color: rgb(199, 237, 204); /* 设置文本区背景色 */
-        }
-        .button-container {
-            text-align: right; /* 让按钮靠右对齐 */
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            padding: 10px;
+            font-size: 16px;
         }
         button {
-            padding: 10px 15px;
-            background-color: #4CAF50;
-            color: white;
+            width: 100%;
+            padding: 10px;
             border: none;
             border-radius: 5px;
+            background-color: #28a745;
+            color: white;
+            font-size: 16px;
             cursor: pointer;
-            font-size: 16px; /* 字体大小 */
-            transition: background-color 0.3s; /* 增加过渡效果 */
         }
         button:hover {
-            background-color: #45a049;
+            background-color: #218838;
         }
-        .message {
-            color: #4CAF50; /* 成功提示的文字颜色 */
-            text-align: center; /* 文本居中 */
-            margin-top: 10px; /* 上边距 */
+        .todo-list {
+            margin-top: 20px;
+        }
+        .todo-item {
+            margin: 10px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .todo-item textarea {
+            flex: 1;
+            margin-right: 10px;
+        }
+        .todo-item button {
+            background-color: #007bff;
+        }
+        .todo-item button:hover {
+            background-color: #0056b3;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <img src="s-2012665.png?f=webp" alt="Logo" class="logo">
         <h1>Todolist</h1>
-        <textarea id="content" placeholder="输入内容..."></textarea>
-        <div class="button-container">
-            <button onclick="saveData()">保存</button>
-        </div>
-        <div id="message" class="message"></div> <!-- 提示信息区域 -->
+        <textarea id="content" placeholder="输入待办事项内容..."></textarea>
+        <button id="save-button">保存待办事项</button>
+
+        <div class="todo-list" id="todo-list"></div>
     </div>
 
     <script>
-        async function saveData() {
-            const content = document.getElementById('content').value;
-            const messageDiv = document.getElementById('message'); // 获取提示信息区域
+        // 获取待办事项并显示在页面上
+        function fetchTodos() {
+            fetch('/todos')
+                .then(response => response.json())
+                .then(data => {
+                    const todoList = document.getElementById('todo-list');
+                    todoList.innerHTML = '';
 
-            try {
-                const response = await fetch('/save', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ content: content })
-                });
-
-                if (response.ok) {
-                    const result = await response.json();
-                    // messageDiv.textContent = `保存成功: ${result.data.content}`; // 显示成功提示
-                    messageDiv.textContent = `保存成功`; // 显示成功提示
-                } else {
-                    messageDiv.textContent = '保存失败'; // 显示失败提示
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                messageDiv.textContent = '发生错误，请重试'; // 显示
-            }
+                    data.forEach(todo => {
+                        const div = document.createElement('div');
+                        div.className = 'todo-item';
+                        div.innerHTML = `
+                            <textarea data-id="${todo.id}">${todo.content}</textarea>
+                            <button onclick="updateTodo(${todo.id})">更新</button>
+                        `;
+                        todoList.appendChild(div);
+                    });
+                })
+                .catch(err => console.error('获取待办事项失败:', err));
         }
+
+        // 保存新的待办事项
+        document.getElementById('save-button').addEventListener('click', () => {
+            const content = document.getElementById('content').value;
+            if (!content) {
+                alert('请填写待办事项内容。');
+                return;
+            }
+
+            const todo = { content };
+            fetch('/save', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(todo)
+            })
+            .then(response => response.json())
+            .then(() => {
+                document.getElementById('content').value = '';
+                fetchTodos(); // 更新待办事项列表
+            })
+            .catch(err => console.error('保存待办事项失败:', err));
+        });
+
+        // 更新已存在的待办事项
+        function updateTodo(id) {
+            const textarea = document.querySelector(`textarea[data-id="${id}"]`);
+            const content = textarea.value;
+            if (!content) {
+                alert('请填写待办事项内容。');
+                return;
+            }
+
+            const todo = { id, content };
+            fetch('/save', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(todo)
+            })
+            .then(response => response.json())
+            .then(() => {
+                fetchTodos(); // 更新待办事项列表
+            })
+            .catch(err => console.error('更新待办事项失败:', err));
+        }
+
+        // 页面加载时获取待办事项
+        window.onload = fetchTodos;
     </script>
 </body>
 </html>
