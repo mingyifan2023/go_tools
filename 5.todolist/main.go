@@ -60,8 +60,8 @@ func getTodosHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(todos)
 }
 
-// 保存或更新待办事项到数据库
-func saveTodoHandler(w http.ResponseWriter, r *http.Request) {
+// 保存待办事项到数据库
+func saveTodosHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
 		var todos []Todo
 		err := json.NewDecoder(r.Body).Decode(&todos)
@@ -78,7 +78,11 @@ func saveTodoHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// 清除原有待办事项
-		db.Exec("DELETE FROM todos")
+		if err := db.Exec("DELETE FROM todos").Error; err != nil {
+			http.Error(w, "删除数据失败", http.StatusInternalServerError)
+			log.Fatal(err)
+			return
+		}
 
 		// 插入新的待办事项
 		for _, todo := range todos {
@@ -92,30 +96,6 @@ func saveTodoHandler(w http.ResponseWriter, r *http.Request) {
 
 		response := map[string]interface{}{
 			"message": "待办事项已保存",
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(response)
-
-	} else if r.Method == http.MethodDelete {
-		// 处理删除所有待办事项的请求
-		db, err := initDB()
-		if err != nil {
-			http.Error(w, "数据库错误", http.StatusInternalServerError)
-			log.Fatal(err)
-			return
-		}
-
-		// 删除所有待办事项
-		result := db.Unscoped().Delete(&Todo{})
-		if result.Error != nil {
-			http.Error(w, "删除数据失败", http.StatusInternalServerError)
-			log.Fatal(result.Error)
-			return
-		}
-
-		response := map[string]interface{}{
-			"message": "所有待办事项已删除",
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -139,8 +119,8 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	http.HandleFunc("/", indexHandler)
-	http.HandleFunc("/save", saveTodoHandler)
-	http.HandleFunc("/todos", getTodosHandler) // 获取待办事项的路由
+	http.HandleFunc("/save", saveTodosHandler) // 保存待办事项的路由
+	http.HandleFunc("/todos", getTodosHandler)  // 获取待办事项的路由
 
 	fmt.Println("服务器正在运行，访问地址: http://localhost:8004")
 	log.Fatal(http.ListenAndServe(":8004", nil))
